@@ -269,9 +269,13 @@ page_versions            Snapshot history for compiled_truth
 raw_data                 Sidecar JSON from external APIs
   page_id, source, data (JSONB)
 
+files                    Binary attachments in Supabase Storage
+  page_slug (FK)         Links to pages (ON UPDATE CASCADE)
+  storage_path, storage_url, content_hash, mime_type, metadata (JSONB)
+
 ingest_log               Audit trail of import/ingest operations
 
-config                   Brain-level settings (embedding model, chunk strategy)
+config                   Brain-level settings (embedding model, chunk strategy, sync state)
 ```
 
 Indexes: B-tree on slug/type, GIN on frontmatter/search_vector, HNSW on embeddings, pg_trgm on title for fuzzy slug resolution.
@@ -305,7 +309,14 @@ SEARCH
 
 IMPORT/EXPORT
   gbrain import <dir> [--no-embed]          Import markdown directory (idempotent)
+  gbrain sync [--repo <path>] [flags]       Git-to-brain incremental sync
   gbrain export [--dir ./out/]              Export to markdown (round-trip)
+
+FILES
+  gbrain files list [slug]                  List stored files
+  gbrain files upload <file> --page <slug>  Upload file to storage
+  gbrain files sync <dir>                   Bulk upload directory
+  gbrain files verify                       Verify all uploads
 
 EMBEDDINGS
   gbrain embed [<slug>|--all|--stale]       Generate/refresh embeddings
@@ -386,7 +397,7 @@ Add to your Claude Code or Cursor MCP config:
 }
 ```
 
-20 tools: get_page, put_page, delete_page, list_pages, search, query, add_tag, remove_tag, get_tags, add_link, remove_link, get_links, get_backlinks, traverse_graph, add_timeline_entry, get_timeline, get_stats, get_health, get_versions, revert_version.
+21 tools: get_page, put_page, delete_page, list_pages, search, query, add_tag, remove_tag, get_tags, add_link, remove_link, get_links, get_backlinks, traverse_graph, add_timeline_entry, get_timeline, get_stats, get_health, get_versions, revert_version, sync_brain.
 
 Every tool mirrors a CLI command. Drift tests verify identical behavior.
 
@@ -402,6 +413,7 @@ Fat markdown files that tell AI agents HOW to use gbrain. No skill logic in the 
 | **enrich** | Enrich pages from external APIs. Raw data stored separately, distilled highlights go to compiled truth. |
 | **briefing** | Daily briefing: today's meetings with participant context, active deals with deadlines, time-sensitive threads, recent changes. |
 | **migrate** | Universal migration from Obsidian (wikilinks to gbrain links), Notion (stripped UUIDs), Logseq (block refs), plain markdown, CSV, JSON, Roam. |
+| **install** | Set up GBrain from scratch: Supabase setup (magic path via CLI or 2-copy-paste fallback), import, sync cron, optional file migration, agent teaching. |
 
 ## Architecture
 
