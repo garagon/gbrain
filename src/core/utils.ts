@@ -6,7 +6,7 @@ import type { Page, PageType, Chunk, SearchResult } from './types.ts';
  * Rejects empty slugs, path traversal (..), and leading /.
  */
 export function validateSlug(slug: string): string {
-  if (!slug || /\.\./.test(slug) || /^\//.test(slug)) {
+  if (!slug || /(^|\/)\.\.($|\/)/.test(slug) || /^\//.test(slug)) {
     throw new Error(`Invalid slug: "${slug}". Slugs cannot be empty, start with /, or contain path traversal.`);
   }
   return slug.toLowerCase();

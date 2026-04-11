@@ -44,7 +44,7 @@ export async function hybridSearch(
     }
   }
 
-  // Embed all query variants
+  // Embed all query variants and run vector search
   let vectorLists: SearchResult[][] = [];
   try {
     const embeddings = await Promise.all(queries.map(q => embed(q)));

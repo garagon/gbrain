@@ -624,9 +624,9 @@ export class PostgresEngine implements BrainEngine {
   }
 
   // Migration support
-  async runMigration(_version: number, sql: string): Promise<void> {
+  async runMigration(_version: number, sqlStr: string): Promise<void> {
     const conn = this.sql;
-    await conn.unsafe(sql);
+    await conn.unsafe(sqlStr);
   }
 
   async getChunksWithEmbeddings(slug: string): Promise<Chunk[]> {
