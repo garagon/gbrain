@@ -82,7 +82,21 @@ export async function resolveFile(
   if (existsSync(markerPath)) {
     if (!storage) throw new Error(`Directory mirrored to storage but no storage backend configured: ${filePath}`);
     const marker = parseMarker(markerPath);
-    const storagePath = marker.prefix + filePath.split('/').pop();
+    // Validate marker.prefix: must not contain path traversal
+    // sequences. The marker file lives on disk and its content is
+    // trusted to the extent that the user controls their own brain
+    // directory, but in a shared brain repo a contributor could
+    // craft a .supabase marker with prefix "../../uploads/" to
+    // make storage.download() request a path outside the intended
+    // scope.
+    if (marker.prefix && /\.\.[\\/]/.test(marker.prefix)) {
+      throw new Error(`Blocked: .supabase marker prefix contains path traversal: ${marker.prefix}`);
+    }
+    const filename = filePath.split('/').pop() || '';
+    if (/\.\.[\\/]/.test(filename)) {
+      throw new Error(`Blocked: filename contains path traversal: ${filename}`);
+    }
+    const storagePath = (marker.prefix || '') + filename;
     try {
       const data = await storage.download(storagePath);
       return { data, source: 'storage' };

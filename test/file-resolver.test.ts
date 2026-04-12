@@ -56,6 +56,38 @@ describe('file-resolver', () => {
 
     expect(resolveFile('people/no-storage.json', brainRoot)).rejects.toThrow('no storage backend');
   });
+
+  // --- R3-F006 fix: .supabase marker prefix injection ---
+
+  test('blocks .supabase marker with traversal prefix', async () => {
+    // The file must NOT exist locally so the resolver falls through
+    // to the .supabase marker path (step 4 in the fallback chain).
+    const subDir = join(brainRoot, 'poisoned');
+    mkdirSync(subDir, { recursive: true });
+    writeFileSync(join(subDir, '.supabase'),
+      'synced_at: 2026-04-12\nbucket: brain-files\nprefix: ../../etc/\nfile_count: 1\n'
+    );
+    // No local file at poisoned/secret.json — forces the marker path
+
+    await expect(
+      resolveFile('poisoned/secret.json', brainRoot, storage)
+    ).rejects.toThrow('marker prefix contains path traversal');
+  });
+
+  test('allows .supabase marker with clean prefix', async () => {
+    const subDir = join(brainRoot, 'media');
+    mkdirSync(subDir, { recursive: true });
+    // Upload a file to storage under the marker's prefix
+    await storage.upload('media/.raw/photo.jpg', Buffer.from('jpeg-data'));
+    // Create marker pointing at the clean prefix
+    writeFileSync(join(subDir, '.supabase'),
+      'synced_at: 2026-04-12\nbucket: brain-files\nprefix: media/.raw/\nfile_count: 1\n'
+    );
+
+    const result = await resolveFile('media/photo.jpg', brainRoot, storage);
+    expect(result.source).toBe('storage');
+    expect(result.data.toString()).toBe('jpeg-data');
+  });
 });
 
 describe('parseRedirect', () => {
