@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync, existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
+import { readFileSync, readdirSync, statSync, lstatSync, existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { join, relative, extname, basename, dirname } from 'path';
 import { createHash } from 'crypto';
 import type { BrainEngine } from '../core/engine.ts';
@@ -614,9 +614,26 @@ function collectFiles(dir: string): string[] {
   function walk(d: string) {
     for (const entry of readdirSync(d)) {
       if (entry.startsWith('.')) continue;
+      if (entry === 'node_modules') continue;
 
       const full = join(d, entry);
-      const stat = statSync(full);
+      let stat;
+      try {
+        // lstatSync, not statSync: must NOT follow symlinks. A
+        // symlink inside a shared brain directory can point at any
+        // user-readable file; following it would upload the target
+        // to storage, where a bearer-token holder can download it.
+        stat = lstatSync(full);
+      } catch {
+        // Broken symlink or permission error
+        continue;
+      }
+
+      if (stat.isSymbolicLink()) {
+        // Skip symlinks entirely — blocks both file exfil and
+        // circular-symlink DoS.
+        continue;
+      }
 
       if (stat.isDirectory()) {
         walk(full);
