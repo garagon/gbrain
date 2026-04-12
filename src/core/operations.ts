@@ -529,6 +529,8 @@ const get_ingest_log: Operation = {
 
 // --- File Operations ---
 
+const FILE_LIST_LIMIT = 100;
+
 const file_list: Operation = {
   name: 'file_list',
   description: 'List stored files',
@@ -538,10 +540,14 @@ const file_list: Operation = {
   handler: async (_ctx, p) => {
     const sql = db.getConnection();
     const slug = p.slug as string | undefined;
+    // Both branches need a LIMIT. Without one, the slug-filtered
+    // branch materializes every file for that slug — an authenticated
+    // caller can force unbounded memory consumption on the Edge
+    // Function isolate by targeting a page with many attachments.
     if (slug) {
-      return sql`SELECT id, page_slug, filename, storage_path, mime_type, size_bytes, content_hash, created_at FROM files WHERE page_slug = ${slug} ORDER BY filename`;
+      return sql`SELECT id, page_slug, filename, storage_path, mime_type, size_bytes, content_hash, created_at FROM files WHERE page_slug = ${slug} ORDER BY filename LIMIT ${FILE_LIST_LIMIT}`;
     }
-    return sql`SELECT id, page_slug, filename, storage_path, mime_type, size_bytes, content_hash, created_at FROM files ORDER BY page_slug, filename LIMIT 100`;
+    return sql`SELECT id, page_slug, filename, storage_path, mime_type, size_bytes, content_hash, created_at FROM files ORDER BY page_slug, filename LIMIT ${FILE_LIST_LIMIT}`;
   },
 };
 
