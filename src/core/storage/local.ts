@@ -48,7 +48,7 @@ export class LocalStorage implements StorageBackend {
   }
 
   async list(prefix: string): Promise<string[]> {
-    const dir = join(this.basePath, prefix);
+    const dir = this.contained(prefix);
     if (!existsSync(dir)) return [];
     const results: string[] = [];
     function walk(d: string, rel: string) {
@@ -66,6 +66,6 @@ export class LocalStorage implements StorageBackend {
   }
 
   async getUrl(path: string): Promise<string> {
-    return `file://${join(this.basePath, path)}`;
+    return `file://${this.contained(path)}`;
   }
 }

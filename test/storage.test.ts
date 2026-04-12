@@ -120,6 +120,26 @@ describe('createStorage', () => {
     }
   });
 
+  test('blocks list path traversal via ../', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'gbrain-traversal-'));
+    try {
+      const storage = new LocalStorage(tmpDir);
+      await expect(storage.list('../../etc')).rejects.toThrow('Path traversal blocked');
+    } finally {
+      rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  test('blocks getUrl path traversal via ../', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'gbrain-traversal-'));
+    try {
+      const storage = new LocalStorage(tmpDir);
+      await expect(storage.getUrl('../../etc/passwd')).rejects.toThrow('Path traversal blocked');
+    } finally {
+      rmSync(tmpDir, { recursive: true });
+    }
+  });
+
   test('allows legitimate nested paths', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'gbrain-traversal-'));
     try {
