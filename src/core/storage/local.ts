@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, readdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, readdirSync, realpathSync } from 'fs';
+import { join, dirname, resolve } from 'path';
 import type { StorageBackend } from '../storage.ts';
 
 /**
@@ -7,29 +7,44 @@ import type { StorageBackend } from '../storage.ts';
  * Stores files in a local directory, mimicking S3/Supabase behavior.
  */
 export class LocalStorage implements StorageBackend {
+  private readonly canonicalBase: string;
+
   constructor(private basePath: string) {
     mkdirSync(basePath, { recursive: true });
+    this.canonicalBase = realpathSync(basePath);
+  }
+
+  /**
+   * Resolve and contain a path within basePath. Throws if the
+   * resolved path escapes the storage root via ../ traversal.
+   */
+  private contained(path: string): string {
+    const full = resolve(this.canonicalBase, path);
+    if (!full.startsWith(this.canonicalBase + '/') && full !== this.canonicalBase) {
+      throw new Error(`Path traversal blocked: ${path} resolves outside storage root`);
+    }
+    return full;
   }
 
   async upload(path: string, data: Buffer, _mime?: string): Promise<void> {
-    const full = join(this.basePath, path);
+    const full = this.contained(path);
     mkdirSync(dirname(full), { recursive: true });
     writeFileSync(full, data);
   }
 
   async download(path: string): Promise<Buffer> {
-    const full = join(this.basePath, path);
+    const full = this.contained(path);
     if (!existsSync(full)) throw new Error(`File not found in storage: ${path}`);
     return readFileSync(full);
   }
 
   async delete(path: string): Promise<void> {
-    const full = join(this.basePath, path);
+    const full = this.contained(path);
     if (existsSync(full)) unlinkSync(full);
   }
 
   async exists(path: string): Promise<boolean> {
-    return existsSync(join(this.basePath, path));
+    return existsSync(this.contained(path));
   }
 
   async list(prefix: string): Promise<string[]> {
