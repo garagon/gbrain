@@ -462,14 +462,32 @@ function cmdDoctor(args: string[]): void {
   }
   const results: CheckResult[] = [];
 
+  // Shell metacharacters that indicate command chaining or injection.
+  // Health checks should be simple single commands, not pipelines.
+  const UNSAFE_SHELL_RE = /[;&|`$(){}\\<>\n]/;
+
   for (const recipe of configured) {
     for (const check of recipe.frontmatter.health_checks) {
+      // Reject health_check strings containing shell metacharacters.
+      // Recipe files can be loaded from CWD's recipes/ directory, so
+      // an attacker who lands a malicious recipe in a shared brain repo
+      // could execute arbitrary commands via crafted health_checks.
+      if (UNSAFE_SHELL_RE.test(check)) {
+        results.push({
+          integration: recipe.frontmatter.id,
+          check,
+          status: 'fail',
+          output: `Blocked: health_check contains unsafe shell characters. Only simple commands are allowed.`,
+        });
+        continue;
+      }
       try {
         const output = execSync(check, {
           timeout: 10000,
           encoding: 'utf-8',
+          shell: false, // no shell interpretation — run command directly
           env: process.env,
-        }).trim();
+        } as any).trim();
         results.push({
           integration: recipe.frontmatter.id,
           check,
