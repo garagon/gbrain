@@ -68,6 +68,18 @@ interface HeartbeatEntry {
  * which splits on --- as timeline separator and would corrupt recipe bodies
  * that use horizontal rules).
  */
+/**
+ * Returns true if a health_check string contains shell metacharacters
+ * that could enable command injection. Health checks should be simple
+ * single commands (e.g. "curl -s https://..."), not pipelines or
+ * chained commands. Recipe files can be loaded from CWD, so an
+ * attacker who lands a malicious recipe in a shared brain repo could
+ * inject arbitrary commands via crafted health_checks values.
+ */
+export function isUnsafeHealthCheck(check: string): boolean {
+  return /[;&|`$(){}\\<>\n]/.test(check);
+}
+
 export function parseRecipe(content: string, filename: string): ParsedRecipe | null {
   try {
     const { data, content: body } = matter(content);
@@ -462,17 +474,9 @@ function cmdDoctor(args: string[]): void {
   }
   const results: CheckResult[] = [];
 
-  // Shell metacharacters that indicate command chaining or injection.
-  // Health checks should be simple single commands, not pipelines.
-  const UNSAFE_SHELL_RE = /[;&|`$(){}\\<>\n]/;
-
   for (const recipe of configured) {
     for (const check of recipe.frontmatter.health_checks) {
-      // Reject health_check strings containing shell metacharacters.
-      // Recipe files can be loaded from CWD's recipes/ directory, so
-      // an attacker who lands a malicious recipe in a shared brain repo
-      // could execute arbitrary commands via crafted health_checks.
-      if (UNSAFE_SHELL_RE.test(check)) {
+      if (isUnsafeHealthCheck(check)) {
         results.push({
           integration: recipe.frontmatter.id,
           check,

