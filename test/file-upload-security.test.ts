@@ -5,21 +5,13 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 describe('validateUploadPath', () => {
-  test('allows files within the working directory', () => {
-    // These files exist in the repo and are within cwd
+  test('allows regular files', () => {
+    // These files exist in the repo
     expect(() => validateUploadPath('src/core/operations.ts')).not.toThrow();
     expect(() => validateUploadPath('package.json')).not.toThrow();
   });
 
-  test('rejects paths outside the working directory', () => {
-    expect(() => validateUploadPath('/tmp/outside-file')).toThrow('must be within the working directory');
-  });
-
-  test('rejects traversal attempts', () => {
-    expect(() => validateUploadPath('../../.ssh/id_rsa')).toThrow('must be within the working directory');
-  });
-
-  test('rejects symlinks inside the working directory', () => {
+  test('rejects symlinks', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'upload-test-'));
     const target = join(tmpDir, 'secret.txt');
     writeFileSync(target, 'secret data');

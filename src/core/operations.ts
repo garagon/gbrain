@@ -13,17 +13,14 @@ import { expandQuery } from './search/expansion.ts';
 import * as db from './db.ts';
 
 /**
- * Validate that a file path is confined within the working directory
- * and is not a symlink. Throws OperationError if the path escapes
- * cwd or points to a symlink. Used by file_upload to prevent
- * arbitrary file reads via MCP.
+ * Validate that a file path is not a symlink. The remote Edge Function
+ * was removed in v0.8.0 so file_upload is only reachable via the local
+ * stdio MCP server and the CLI — both run as the local user who can
+ * already read any file. The symlink check prevents a planted symlink
+ * inside a shared brain directory from being silently followed.
  */
 export function validateUploadPath(filePath: string): void {
   const resolved = resolvePath(filePath);
-  const cwd = process.cwd();
-  if (!resolved.startsWith(cwd + '/') && resolved !== cwd) {
-    throw new OperationError('path_denied', `file_upload path must be within the working directory. Got: ${filePath}`);
-  }
   const stat = lstatSync(resolved);
   if (stat.isSymbolicLink()) {
     throw new OperationError('path_denied', `file_upload rejects symlinks: ${filePath}`);
