@@ -7,7 +7,10 @@ function log(msg: string) {
 }
 
 export async function runServe(engine: BrainEngine, args: string[] = []) {
-  const readonly = args.includes('--readonly');
+  // Only pass readonly: true when the flag is explicitly set.
+  // Passing false would block the env var fallback in startMcpServer
+  // because ?? doesn't fall through on false, only on undefined.
+  const readonly = args.includes('--readonly') ? true : undefined;
 
   if (args.includes('--help') || args.includes('-h')) {
     log('Usage: gbrain serve [--readonly]');
