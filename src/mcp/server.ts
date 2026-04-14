@@ -77,12 +77,13 @@ export async function startMcpServer(engine: BrainEngine, opts?: McpServerOption
     }
 
     if (readonly && op.mutating) {
+      process.stderr.write(`[gbrain] BLOCKED: "${name}" rejected (readonly mode)\n`);
       return {
         content: [{
           type: 'text',
           text: JSON.stringify({
             error: 'readonly',
-            message: `Operation "${name}" is mutating and this server is in readonly mode. Start without GBRAIN_MCP_READONLY to enable writes.`,
+            message: `Operation "${name}" is mutating and this server is in readonly mode. Start with "gbrain serve" (without --readonly) to enable writes.`,
           }, null, 2),
         }],
         isError: true,

@@ -305,7 +305,7 @@ async function handleCliOnly(command: string, args: string[]) {
       }
       case 'serve': {
         const { runServe } = await import('./commands/serve.ts');
-        await runServe(engine);
+        await runServe(engine, args);
         return; // serve doesn't disconnect
       }
       case 'call': {
@@ -435,7 +435,7 @@ ADMIN
   history <slug>                     Page version history
   revert <slug> <version-id>         Revert to version
   config [show|get|set] <key> [val]  Brain config
-  serve                              MCP server (stdio)
+  serve [--readonly]                  MCP server (stdio)
   call <tool> '<json>'               Raw tool invocation
   version                            Version info
   --tools-json                       Tool discovery (JSON)
