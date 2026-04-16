@@ -48,6 +48,26 @@ export interface TestCase {
 const LOG_DIR = join(homedir(), '.gbrain', 'fail-improve');
 const MAX_ENTRIES = 1000;
 
+// Operation names are used verbatim as path segments under LOG_DIR. Every
+// caller in-tree passes a hard-coded identifier like "extract_mrr", but
+// FailImproveLoop is exported and the signature takes `string`, so nothing
+// at the type level prevents a future caller from forwarding a user-
+// supplied value. Reject anything that could escape LOG_DIR or change the
+// directory layout: path separators, `..`, null bytes, leading dots,
+// absolute paths. Allow the set that in-tree callers actually use —
+// alphanumerics, underscore, dash.
+const VALID_OPERATION = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+function assertSafeOperation(operation: string): void {
+  if (typeof operation !== 'string' || !VALID_OPERATION.test(operation)) {
+    throw new Error(
+      `FailImproveLoop: invalid operation name '${operation}'. ` +
+      `Must match /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/ — no path separators, ` +
+      `no parent-dir segments, no leading dot.`
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Core class
 // ---------------------------------------------------------------------------
@@ -181,6 +201,7 @@ export class FailImproveLoop {
 
   /** Log an improvement (when a new deterministic pattern is added). */
   logImprovement(operation: string, description: string): void {
+    assertSafeOperation(operation);
     const filePath = join(this.logDir, operation, 'improvements.json');
     this.ensureDir(filePath);
     let improvements: any[] = [];
@@ -196,10 +217,12 @@ export class FailImproveLoop {
   // -------------------------------------------------------------------------
 
   private getLogPath(operation: string): string {
+    assertSafeOperation(operation);
     return join(this.logDir, `${operation}.jsonl`);
   }
 
   private getCallCountPath(operation: string): string {
+    assertSafeOperation(operation);
     return join(this.logDir, `${operation}.counts.json`);
   }
 
@@ -227,6 +250,7 @@ export class FailImproveLoop {
   }
 
   private getImprovements(operation: string): Array<{ timestamp: string; description: string }> {
+    assertSafeOperation(operation);
     const filePath = join(this.logDir, operation, 'improvements.json');
     if (!existsSync(filePath)) return [];
     try { return JSON.parse(readFileSync(filePath, 'utf-8')); }
