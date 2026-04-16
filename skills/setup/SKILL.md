@@ -27,8 +27,15 @@ Set up GBrain from scratch. Target: working brain in under 5 minutes.
 
 ## Install (if not already installed)
 
+Pin the install to a specific commit so every agent that runs this skill
+gets the same source tree. An unpinned `github:garrytan/gbrain` resolves
+to whatever the default branch points at *now*, which is a moving target:
+a merged PR (including a later-reverted one) or a compromised push lands
+silently on every fresh setup. Maintainers bump the SHA on release — same
+policy `CLAUDE.md` requires for GitHub Actions in `.github/workflows/`.
+
 ```bash
-bun add github:garrytan/gbrain
+bun add github:garrytan/gbrain#b7e3005
 ```
 
 ## How GBrain connects
