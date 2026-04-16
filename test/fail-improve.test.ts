@@ -214,6 +214,14 @@ describe('fail-improve / operation name validation', () => {
     { label: 'empty string',         op: '' },
     { label: 'only dots',            op: '...' },
     { label: 'over length',          op: 'x'.repeat(65) },
+    // Non-ASCII attacks: confirm Unicode support did not open a hole.
+    { label: 'CJK with slash',       op: '田中/..' },
+    { label: 'CJK traversal',        op: '../田中' },
+    { label: 'arabic with null',     op: 'مَهَمَّة\u0000x' },
+    { label: 'cyrillic leading dot', op: '.иван' },
+    { label: 'emoji (not letter)',   op: '🚀_op' },
+    { label: 'RTL override',         op: 'ok\u202eevil' },
+    { label: 'whitespace',           op: 'has space' },
   ];
 
   for (const { label, op } of BAD) {
@@ -241,7 +249,21 @@ describe('fail-improve / operation name validation', () => {
     }
   });
 
-  const GOOD = ['extract_mrr', 'rotation_test', 'op-1', 'ABC_123', 'a', 'x'.repeat(64)];
+  const GOOD = [
+    // ASCII identifiers already in use in-tree
+    'extract_mrr', 'rotation_test', 'op-1', 'ABC_123', 'a', 'x'.repeat(64),
+    // Non-ASCII scripts — callers that derive operation names from entity
+    // pages, recipe titles, or user labels in other languages must keep
+    // working. One test per script family, both mixed and pure.
+    '田中-enrich',           // CJK + ascii punctuation
+    'extract_タスク',         // katakana + underscore mix
+    'иван_stats',            // cyrillic
+    '抽出_mrr',              // CJK prefix
+    'مَهَمَّة',              // arabic
+    'mañana',                // latin-extended (ñ)
+    '任務1',                 // CJK + digit
+    'Δ_delta',               // greek
+  ];
   for (const op of GOOD) {
     test(`accepts '${op.slice(0, 40)}'`, async () => {
       const result = await loop.execute(op, 'in', () => null, async () => 'ok');
